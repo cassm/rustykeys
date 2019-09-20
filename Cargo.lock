@@ -72,6 +72,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "lazy_static"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "libc"
 version = "0.2.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -121,6 +126,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "rustykeys"
 version = "0.1.0"
 dependencies = [
+ "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "midir 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -187,6 +193,7 @@ dependencies = [
 "checksum core-foundation-sys 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "065a5d7ffdcbc8fa145d6f0746f3555025b9097a9e9cda59f7467abae670c78d"
 "checksum coremidi 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ae2b8d4679b3a2a92b843d4c8e4a721be038ce49fce701c46296b2713f24c814"
 "checksum coremidi-sys 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "07f05827cebb30dcd539ff1ac9bf6764f574a15fa147f8572f99d7617142f95e"
+"checksum lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 "checksum libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)" = "34fcd2c08d2f832f376f4173a231990fa5aef4e99fb569867318a227ef4c06ba"
 "checksum memalloc 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "df39d232f5c40b0891c10216992c2f250c054105cb1e56f0fc9032db6203ecc1"
 "checksum midir 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e653b919aca8b5f2697854f1819b33bfe49bcb3378abb0dbd834ce43ede9c7b1"

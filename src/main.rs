@@ -1,5 +1,14 @@
 extern crate midir;
 
+#[macro_use]
+extern crate lazy_static;
+
+use std::sync::Mutex;
+
+lazy_static! {
+    static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
+}
+
 use std::io::{stdin, stdout, Write};
 use std::error::Error;
 
@@ -53,16 +62,28 @@ fn run() -> Result<(), Box<Error>> {
     Ok(())
 }
 
-fn process_msg(msg: &[u8]) {
+fn get_note_name(key_index: u8) -> String {
     let note_names = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
     let midi_start_index = 21;
 
-    let action = match msg[0] {
-        0x90 => "KeyDown",
-        0x80 => "KeyUp",
-        _ => "Unknown"
-    };
-    let note_index = msg[1] - midi_start_index;
-    let note = format!("{}{}", note_names[note_index as usize % note_names.len()], note_index / note_names.len() as u8);
-    println!("{}: {}", action, note);
+    let note_index = key_index - midi_start_index;
+
+    format!("{}{}", note_names[note_index as usize % note_names.len()], note_index / note_names.len() as u8)
+}
+
+fn process_msg(msg: &[u8]) {
+    match msg[0] {
+        0x90 => {
+            KEYS_DOWN.lock().unwrap().push(msg[1]);
+            println!("KeyDown: {}", get_note_name(msg[1]));
+        },
+        0x80 => {
+            let index = KEYS_DOWN.lock().unwrap().iter().position(|x| *x == msg[1]).unwrap();
+            KEYS_DOWN.lock().unwrap().remove(index);
+            println!("KeyUp: {}", get_note_name(msg[1]));
+        },
+        _ => println!("Unknown action")
+    }
+
+    println!("Keys pressed: {:?}", KEYS_DOWN.lock().unwrap());
 }
