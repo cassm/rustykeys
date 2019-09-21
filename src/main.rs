@@ -5,6 +5,7 @@ extern crate midir;
 use std::sync::Mutex;
 use std::io::{stdin, stdout, Write};
 use std::error::Error;
+use std::fmt;
 
 use midir::{MidiInput, Ignore};
 
@@ -16,6 +17,41 @@ fn main() {
     match run() {
         Ok(_) => (),
         Err(err) => println!("Error: {}", err.description())
+    }
+}
+
+enum ChordType {
+    Major,
+    Minor,
+    Diminished,
+    MajorSeventh,
+    MinorSeventh,
+    DominantSeventh,
+    Augmented,
+}
+
+impl fmt::Display for ChordType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+       match *self {
+           ChordType::Major => write!(f, ""),
+           ChordType::Minor => write!(f, "m"),
+           ChordType::Diminished => write!(f, "dim"),
+           ChordType::MajorSeventh => write!(f, "maj7"),
+           ChordType::MinorSeventh => write!(f, "min7"),
+           ChordType::DominantSeventh => write!(f, "dom7"),
+           ChordType::Augmented => write!(f, "aug"),
+       }
+    }
+}
+
+struct Chord {
+    root: String,
+    chord_type: ChordType,
+}
+
+impl fmt::Display for Chord {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+       write!(f, "{}{}", self.root, self.chord_type)
     }
 }
 
