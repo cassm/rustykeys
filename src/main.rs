@@ -2,6 +2,8 @@
 extern crate lazy_static;
 extern crate midir;
 extern crate ordinal;
+extern crate timer;
+extern crate chrono;
 
 use ordinal::Ordinal;
 use std::sync::Mutex;
@@ -101,8 +103,12 @@ fn run() -> Result<(), Box<Error>> {
     println!("\nOpening connection");
     let in_port_name = midi_in.port_name(in_port)?;
 
+    let mut _timer = timer::Timer::new();
+    let mut _guard = _timer.schedule_with_delay(chrono::Duration::seconds(0), chord_identify_cb);
+
     let _conn_in = midi_in.connect(in_port, "midir-read-input", move |stamp, message, _| {
         process_msg(message);
+        _guard = _timer.schedule_with_delay(chrono::Duration::milliseconds(250), chord_identify_cb);
     }, ())?;
 
     println!("Connection open, reading input from '{}' (press enter to exit) ...", in_port_name);
@@ -134,7 +140,9 @@ fn process_msg(msg: &[u8]) {
         },
         _ => {},
     }
+}
 
+fn chord_identify_cb() {
     if KEYS_DOWN.lock().unwrap().len() > 0 {
         match identify_chord() {
             Some(i) => println!("chord: {}", i),
