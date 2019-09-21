@@ -1,7 +1,9 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate midir;
+extern crate ordinal;
 
+use ordinal::Ordinal;
 use std::sync::Mutex;
 use std::io::{stdin, stdout, Write};
 use std::error::Error;
@@ -47,11 +49,17 @@ impl fmt::Display for ChordType {
 struct Chord {
     root: String,
     chord_type: ChordType,
+    inversion: usize,
 }
 
 impl fmt::Display for Chord {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-       write!(f, "{}{}", self.root, self.chord_type)
+        let inversion_str = match self.inversion {
+            0 => String::from(""),
+            _ => format!(", {} inversion", Ordinal(self.inversion)),
+        };
+
+        write!(f, "{}{}{}", self.root, self.chord_type, inversion_str)
     }
 }
 
@@ -133,22 +141,27 @@ fn identify_chord() -> Option<Chord> {
     }
 
     keys_down.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let root = get_note_name(keys_down[0]);
 
-    let mut positions: Vec<u8> = vec!();
+    for inversion in 0..keys_down.len() {
+        let positions: Vec<u8> = keys_down.iter().map(|x| x - keys_down[0]).collect();
+        let root = get_note_name(keys_down[0]);
 
-    for i in &keys_down {
-        positions.push(i - keys_down[0]);
+        match positions.as_slice() {
+            [0, 4, 7] => return Some(Chord{root, chord_type: ChordType::Major, inversion}),
+            [0, 3, 7] => return Some(Chord{root, chord_type: ChordType::Minor, inversion}),
+            [0, 3, 6] => return Some(Chord{root, chord_type: ChordType::Diminished, inversion}),
+            [0, 4, 7, 11] => return Some(Chord{root, chord_type: ChordType::MajorSeventh, inversion}),
+            [0, 3, 7, 10] => return Some(Chord{root, chord_type: ChordType::MinorSeventh, inversion}),
+            [0, 4, 7, 10] => return Some(Chord{root, chord_type: ChordType::DominantSeventh, inversion}),
+            [0, 4, 8] => return Some(Chord{root, chord_type: ChordType::Augmented, inversion}),
+            _ => {},
+        }
+
+        match keys_down.pop() {
+            Some(i) => keys_down.insert(0, i - 12),
+            _ => {}
+        };
     }
 
-    match positions.as_slice() {
-        [0, 4, 7] => return Some(Chord{root, chord_type: ChordType::Major}),
-        [0, 3, 7] => return Some(Chord{root, chord_type: ChordType::Minor}),
-        [0, 3, 6] => return Some(Chord{root, chord_type: ChordType::Diminished}),
-        [0, 4, 7, 11] => return Some(Chord{root, chord_type: ChordType::MajorSeventh}),
-        [0, 3, 7, 10] => return Some(Chord{root, chord_type: ChordType::MinorSeventh}),
-        [0, 4, 7, 10] => return Some(Chord{root, chord_type: ChordType::DominantSeventh}),
-        [0, 4, 8] => return Some(Chord{root, chord_type: ChordType::Augmented}),
-        _ => return None
-    }
+    return None
 }

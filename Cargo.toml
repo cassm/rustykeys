@@ -10,3 +10,4 @@ edition = "2018"
 
 midir = "0.5.0"
 lazy_static = "1.4.0"
+ordinal = "0.2.2"
