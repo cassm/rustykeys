@@ -109,15 +109,46 @@ fn process_msg(msg: &[u8]) {
     match msg[0] {
         0x90 => {
             KEYS_DOWN.lock().unwrap().push(msg[1]);
-            println!("KeyDown: {}", get_note_name(msg[1]));
         },
         0x80 => {
             let index = KEYS_DOWN.lock().unwrap().iter().position(|x| *x == msg[1]).unwrap();
             KEYS_DOWN.lock().unwrap().remove(index);
-            println!("KeyUp: {}", get_note_name(msg[1]));
         },
-        _ => println!("Unknown action")
+        _ => {},
     }
 
-    println!("Keys pressed: {:?}", KEYS_DOWN.lock().unwrap());
+    if KEYS_DOWN.lock().unwrap().len() > 0 {
+        match identify_chord() {
+            Some(i) => println!("chord: {}", i),
+            None => {},
+        }
+    }
+}
+
+fn identify_chord() -> Option<Chord> {
+    let mut keys_down: Vec<u8> = vec!();
+
+    for i in KEYS_DOWN.lock().unwrap().as_slice() {
+        keys_down.push(*i);
+    }
+
+    keys_down.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let root = get_note_name(keys_down[0]);
+
+    let mut positions: Vec<u8> = vec!();
+
+    for i in &keys_down {
+        positions.push(i - keys_down[0]);
+    }
+
+    match positions.as_slice() {
+        [0, 4, 7] => return Some(Chord{root, chord_type: ChordType::Major}),
+        [0, 3, 7] => return Some(Chord{root, chord_type: ChordType::Minor}),
+        [0, 3, 6] => return Some(Chord{root, chord_type: ChordType::Diminished}),
+        [0, 4, 7, 11] => return Some(Chord{root, chord_type: ChordType::MajorSeventh}),
+        [0, 3, 7, 10] => return Some(Chord{root, chord_type: ChordType::MinorSeventh}),
+        [0, 4, 7, 10] => return Some(Chord{root, chord_type: ChordType::DominantSeventh}),
+        [0, 4, 8] => return Some(Chord{root, chord_type: ChordType::Augmented}),
+        _ => return None
+    }
 }
