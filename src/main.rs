@@ -110,7 +110,7 @@ fn get_note_name(key_index: u8) -> String {
 
     let note_index = key_index - midi_start_index;
 
-    format!("{}{}", note_names[note_index as usize % note_names.len()], note_index / note_names.len() as u8)
+    format!("{}({})", note_names[note_index as usize % note_names.len()], note_index / note_names.len() as u8)
 }
 
 fn process_msg(msg: &[u8]) {
