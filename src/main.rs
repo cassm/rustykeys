@@ -32,17 +32,17 @@ enum ChordType {
     Augmented,
 }
 
-impl fmt::Display for ChordType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl ChordType {
+    fn value(&self) -> String {
        match *self {
-           ChordType::Major => write!(f, ""),
-           ChordType::Minor => write!(f, "m"),
-           ChordType::Diminished => write!(f, "dim"),
-           ChordType::MajorSeventh => write!(f, "maj7"),
-           ChordType::MinorSeventh => write!(f, "min7"),
-           ChordType::DominantSeventh => write!(f, "dom7"),
-           ChordType::Augmented => write!(f, "aug"),
-       }
+           ChordType::Major => "".to_string(),
+           ChordType::Minor => "m".to_string(),
+           ChordType::Diminished => "dim".to_string(),
+           ChordType::MajorSeventh => "maj7".to_string(),
+           ChordType::MinorSeventh => "min7".to_string(),
+           ChordType::DominantSeventh => "dom7".to_string(),
+           ChordType::Augmented => "aug".to_string(),
+        }
     }
 }
 
@@ -59,7 +59,7 @@ impl fmt::Display for Chord {
             _ => format!(", {} inversion", Ordinal(self.inversion)),
         };
 
-        write!(f, "{}{}{}", self.root, self.chord_type, inversion_str)
+        write!(f, "{}{}{}", self.root, self.chord_type.value(), inversion_str)
     }
 }
 
