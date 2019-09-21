@@ -30,6 +30,9 @@ enum ChordType {
     MinorSeventh,
     DominantSeventh,
     Augmented,
+    SuspendedSecond,
+    SuspendedFourth,
+    SuspendedSixth,
 }
 
 impl ChordType {
@@ -42,6 +45,9 @@ impl ChordType {
            ChordType::MinorSeventh => "min7".to_string(),
            ChordType::DominantSeventh => "dom7".to_string(),
            ChordType::Augmented => "aug".to_string(),
+           ChordType::SuspendedSecond => "7sus2".to_string(),
+           ChordType::SuspendedFourth => "7sus4".to_string(),
+           ChordType::SuspendedSixth => "7sus6".to_string(),
         }
     }
 }
@@ -156,6 +162,9 @@ fn identify_chord() -> Option<Chord> {
             [0, 3, 7, 10] => chord_type = Some(ChordType::MinorSeventh),
             [0, 4, 7, 10] => chord_type = Some(ChordType::DominantSeventh),
             [0, 4, 8] => chord_type = Some(ChordType::Augmented),
+            [0, 2, 7] => chord_type = Some(ChordType::SuspendedSecond),
+            [0, 5, 7] => chord_type = Some(ChordType::SuspendedFourth),
+            [0, 4, 7, 9] => chord_type = Some(ChordType::SuspendedSixth),
             _ => {},
         }
 
