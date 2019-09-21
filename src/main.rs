@@ -1,18 +1,16 @@
-extern crate midir;
-
 #[macro_use]
 extern crate lazy_static;
+extern crate midir;
 
 use std::sync::Mutex;
-
-lazy_static! {
-    static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
-}
-
 use std::io::{stdin, stdout, Write};
 use std::error::Error;
 
 use midir::{MidiInput, Ignore};
+
+lazy_static! {
+    static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
+}
 
 fn main() {
     match run() {
