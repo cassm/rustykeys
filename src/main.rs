@@ -146,15 +146,22 @@ fn identify_chord() -> Option<Chord> {
         let positions: Vec<u8> = keys_down.iter().map(|x| x - keys_down[0]).collect();
         let root = get_note_name(keys_down[0]);
 
+        let mut chord_type: Option<ChordType> = None;
+
         match positions.as_slice() {
-            [0, 4, 7] => return Some(Chord{root, chord_type: ChordType::Major, inversion}),
-            [0, 3, 7] => return Some(Chord{root, chord_type: ChordType::Minor, inversion}),
-            [0, 3, 6] => return Some(Chord{root, chord_type: ChordType::Diminished, inversion}),
-            [0, 4, 7, 11] => return Some(Chord{root, chord_type: ChordType::MajorSeventh, inversion}),
-            [0, 3, 7, 10] => return Some(Chord{root, chord_type: ChordType::MinorSeventh, inversion}),
-            [0, 4, 7, 10] => return Some(Chord{root, chord_type: ChordType::DominantSeventh, inversion}),
-            [0, 4, 8] => return Some(Chord{root, chord_type: ChordType::Augmented, inversion}),
+            [0, 4, 7] => chord_type = Some(ChordType::Major),
+            [0, 3, 7] => chord_type = Some(ChordType::Minor),
+            [0, 3, 6] => chord_type = Some(ChordType::Diminished),
+            [0, 4, 7, 11] => chord_type = Some(ChordType::MajorSeventh),
+            [0, 3, 7, 10] => chord_type = Some(ChordType::MinorSeventh),
+            [0, 4, 7, 10] => chord_type = Some(ChordType::DominantSeventh),
+            [0, 4, 8] => chord_type = Some(ChordType::Augmented),
             _ => {},
+        }
+
+        match chord_type {
+            Some(i) => return Some(Chord{root, chord_type: i, inversion}),
+            _ => {}
         }
 
         match keys_down.pop() {
