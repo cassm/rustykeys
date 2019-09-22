@@ -236,23 +236,21 @@ fn identify_chord() -> Option<Chord> {
         let root = get_note_name(keys_down[0]);
         let octave = get_octave(keys_down[0]);
 
-        let mut chord_type: Option<ChordType> = None;
-
-        match positions.as_slice() {
-            [0, 4, 7] => chord_type = Some(ChordType::Major),
-            [0, 3, 7] => chord_type = Some(ChordType::Minor),
-            [0, 3, 6] => chord_type = Some(ChordType::Diminished),
-            [0, 4, 7, 11] => chord_type = Some(ChordType::MajorSeventh),
-            [0, 3, 7, 10] => chord_type = Some(ChordType::MinorSeventh),
-            [0, 4, 7, 10] => chord_type = Some(ChordType::DominantSeventh),
-            [0, 4, 8] => chord_type = Some(ChordType::Augmented),
-            [0, 2, 7] => chord_type = Some(ChordType::SusTwo),
-            [0, 5, 7] => chord_type = Some(ChordType::SusFour),
-            [0, 2, 7, 10] => chord_type = Some(ChordType::SevenSusTwo),
-            [0, 5, 7, 10] => chord_type = Some(ChordType::SevenSusFour),
-            [0, 4, 7, 9] => chord_type = Some(ChordType::SusSix),
-            _ => {},
-        }
+        let chord_type = match positions.as_slice() {
+            [0, 4, 7] => Some(ChordType::Major),
+            [0, 3, 7] => Some(ChordType::Minor),
+            [0, 3, 6] => Some(ChordType::Diminished),
+            [0, 4, 7, 11] => Some(ChordType::MajorSeventh),
+            [0, 3, 7, 10] => Some(ChordType::MinorSeventh),
+            [0, 4, 7, 10] => Some(ChordType::DominantSeventh),
+            [0, 4, 8] => Some(ChordType::Augmented),
+            [0, 2, 7] => Some(ChordType::SusTwo),
+            [0, 5, 7] => Some(ChordType::SusFour),
+            [0, 2, 7, 10] => Some(ChordType::SevenSusTwo),
+            [0, 5, 7, 10] => Some(ChordType::SevenSusFour),
+            [0, 4, 7, 9] => Some(ChordType::SusSix),
+            _ => None,
+        };
 
         match chord_type {
             Some(i) => return Some(Chord{root, chord_type: i, inversion, octave}),
