@@ -106,17 +106,17 @@ fn run() -> Result<(), Box<dyn Error>> {
     let mut input = String::new();
 
     loop {
+        println!("Enter command: (q)uit, (p)ractise chords");
         input.clear();
         match stdin().read_line(&mut input) {
             Ok(_) => {
-                match input.trim(
-                    ) {
+                match input.to_lowercase().trim() {
                     "q" => {
                         println!("Closing connection");
                         break;
                     },
                     "p" => {
-                        practice_chords(ChordType::Major, 0)?;
+                        practice_chords_launcher();
                     },
                     _ => println!("Unknown command: {}", input.trim()),
                 }
@@ -126,6 +126,107 @@ fn run() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+fn practice_chords_launcher() {
+    let mut input = String::new();
+
+    let mut chord_type: Option<ChordType> = None;
+    let mut inversion: Option<usize> = None;
+
+    while chord_type == None {
+        println!("Enter type of chords to practice: (M)ajor, (m)inor, (d)iminished, (a)ugmented, (M)ajor (7)th, (m)inor (7)7th, (d)ominant (7)th, sus2, sus4, 7sus2, 7sus4, sus6, (q)uit");
+
+        input.clear();
+        match stdin().read_line(&mut input) {
+            Ok(_) => {
+                match input.trim() {
+                    "q" => {
+                        println!("Exiting.");
+                        return;
+                    },
+                    "M" => {
+                        chord_type = Some(ChordType::Major);
+                    },
+                    "m" => {
+                        chord_type = Some(ChordType::Minor);
+                    },
+                    "d" => {
+                        chord_type = Some(ChordType::Diminished);
+                    },
+                    "a" => {
+                        chord_type = Some(ChordType::Augmented);
+                    },
+                    "M7" => {
+                        chord_type = Some(ChordType::MajorSeventh);
+                    },
+                    "m7" => {
+                        chord_type = Some(ChordType::MinorSeventh);
+                    },
+                    "d7" => {
+                        chord_type = Some(ChordType::DominantSeventh);
+                    },
+                    "sus2" => {
+                        chord_type = Some(ChordType::SusTwo);
+                    },
+                    "sus4" => {
+                        chord_type = Some(ChordType::SusFour);
+                    },
+                    "7sus2" => {
+                        chord_type = Some(ChordType::SevenSusTwo);
+                    },
+                    "7sus4" => {
+                        chord_type = Some(ChordType::SevenSusFour);
+                    },
+                    "sus6" => {
+                        chord_type = Some(ChordType::SusSix);
+                    },
+                    _ => println!("Unknown command: {}", input.trim()),
+                }
+            },
+            Err(error) => println!("error: {}", error),
+        }
+    }
+
+    while inversion == None {
+        println!("Enter inversion: (0..2), (q)uit");
+
+        input.clear();
+        match stdin().read_line(&mut input) {
+            Ok(_) => {
+                match input.trim() {
+                    "q" => {
+                        println!("Exiting.");
+                        return;
+                    },
+                    "0" | "1" | "2" => {
+                        inversion = Some(input.trim().parse().unwrap());
+                    },
+                    _ => println!("Unknown command: {}", input.trim()),
+                }
+            },
+            Err(error) => println!("error: {}", error),
+        }
+    }
+
+    match chord_type {
+        Some(i) => {
+            match inversion {
+                Some(j) => {
+                    match practice_chords(i, j) {
+                        Err(e) => println!("{}", e),
+                        _ => {},
+                    }
+                },
+                None => {
+                    println!("inversion is undefined! this should not be possible.");
+                }
+            }
+        },
+        None => {
+            println!("chord type is undefined! this should not be possible.");
+        }
+    }
 }
 
 fn get_in_port(midi_in: &MidiInput) -> Result<usize, Box<dyn Error>> {
