@@ -16,7 +16,7 @@ use std::time::Instant;
 use midir::{MidiInput, Ignore};
 use rand::{thread_rng, seq::SliceRandom};
 
-const note_names: &'static [&'static str] = &["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
+const NOTE_NAMES: &'static [&'static str] = &["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
 
 lazy_static! {
     static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
@@ -140,7 +140,7 @@ fn get_in_port(midi_in: &MidiInput) -> Result<usize, Box<dyn Error>> {
 
 fn generate_chord_list(chord_type: ChordType, inversion: usize) -> Vec<Chord> {
     let mut rng = thread_rng();
-    let mut chords: Vec<Chord> = note_names.iter().map(|x| Chord{root: x.to_string(), chord_type, inversion, octave: None}).collect();
+    let mut chords: Vec<Chord> = NOTE_NAMES.iter().map(|x| Chord{root: x.to_string(), chord_type, inversion, octave: None}).collect();
     chords.shuffle(&mut rng);
     chords
 }
@@ -198,7 +198,7 @@ fn get_octave(key_index: u8) -> Option<u8> {
 
     let note_index = key_index - midi_start_index;
 
-    Some(note_index / note_names.len() as u8)
+    Some(note_index / NOTE_NAMES.len() as u8)
 }
 
 fn get_note_name(key_index: u8) -> String {
@@ -206,7 +206,7 @@ fn get_note_name(key_index: u8) -> String {
 
     let note_index = key_index - midi_start_index;
 
-    note_names[note_index as usize % note_names.len()].to_string()
+    NOTE_NAMES[note_index as usize % NOTE_NAMES.len()].to_string()
 }
 
 fn process_msg(msg: &[u8]) {
