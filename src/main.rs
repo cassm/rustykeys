@@ -30,7 +30,7 @@ fn main() {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum ChordType {
     Major,
     Minor,
@@ -86,6 +86,19 @@ impl fmt::Display for Chord {
         };
 
         write!(f, "{}{}{}{}", self.root, self.chord_type.value(), inversion_str, octave_str)
+    }
+}
+
+impl PartialEq for Chord {
+    fn eq(&self, other: &Self) -> bool {
+        if self.root != other.root
+            || self.chord_type != other.chord_type
+            || self.inversion != other.inversion
+            || (self.octave != None && other.octave != None && self.octave != other.octave) {
+            return false;
+        }
+
+        return true;
     }
 }
 
@@ -146,7 +159,7 @@ fn generate_chord_list(chord_type: ChordType, inversion: usize) -> Vec<Chord> {
 }
 
 fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dyn Error>> {
-    let chords = generate_chord_list(chord_type, inversion);
+    let mut chords = generate_chord_list(chord_type, inversion);
 
     println!("{:?}", chords);
 
@@ -171,7 +184,9 @@ fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dy
 
     println!("Connection open, reading input from '{}' (press enter to exit) ...", in_port_name);
 
-    loop {
+    println!("Play {}", chords[0]);
+
+    while chords.len() > 0 {
         let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
 
         match last_key_press {
@@ -180,7 +195,21 @@ fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dy
                     *LAST_KEY_PRESS.lock().unwrap() = None;
                     if KEYS_DOWN.lock().unwrap().len() > 0 {
                         match identify_chord() {
-                            Some(i) => println!("chord: {}", i),
+                            Some(i) => {
+                                println!("chord: {}", i);
+
+                                if chords[0] == i {
+                                    println!("Correct!");
+                                    chords.remove(0);
+
+                                    if chords.len() > 0 {
+                                        println!("Play {}", chords[0]);
+                                    }
+                                }
+                                else {
+                                    println!("Try again: {}", chords[0]);
+                                }
+                            },
                             None => {},
                         }
                     }
