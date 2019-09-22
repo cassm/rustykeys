@@ -4,19 +4,23 @@ extern crate midir;
 extern crate ordinal;
 extern crate timer;
 extern crate chrono;
+extern crate rand;
 
 use ordinal::Ordinal;
 use std::sync::Mutex;
 use std::io::{stdin, stdout, Write};
 use std::error::Error;
 use std::fmt;
+use std::time::Instant;
 
 use midir::{MidiInput, Ignore};
+use rand::{thread_rng, seq::SliceRandom};
 
 const note_names: &'static [&'static str] = &["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
 
 lazy_static! {
     static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
+    static ref LAST_KEY_PRESS: Mutex<Option<Instant>> = Mutex::new(None);
 }
 
 fn main() {
@@ -26,6 +30,7 @@ fn main() {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 enum ChordType {
     Major,
     Minor,
@@ -60,6 +65,7 @@ impl ChordType {
     }
 }
 
+#[derive(Debug)]
 struct Chord {
     root: String,
     chord_type: ChordType,
@@ -83,12 +89,33 @@ impl fmt::Display for Chord {
     }
 }
 
-fn run() -> Result<(), Box<Error>> {
+fn run() -> Result<(), Box<dyn Error>> {
     let mut input = String::new();
 
-    let mut midi_in = MidiInput::new("midir forwarding input")?;
-    midi_in.ignore(Ignore::None);
+    loop {
+        input.clear();
+        match stdin().read_line(&mut input) {
+            Ok(_) => {
+                match input.trim(
+                    ) {
+                    "q" => {
+                        println!("Closing connection");
+                        break;
+                    },
+                    "p" => {
+                        practice_chords(ChordType::Major, 0)?;
+                    },
+                    _ => println!("Unknown command: {}", input.trim()),
+                }
+            },
+            Err(error) => println!("error: {}", error),
+        }
+    }
 
+    return Ok(())
+}
+
+fn get_in_port(midi_in: &MidiInput) -> Result<usize, Box<dyn Error>> {
     let in_port = match midi_in.port_count() {
         0 => return Err("no input port found".into()),
         1 => {
@@ -108,33 +135,58 @@ fn run() -> Result<(), Box<Error>> {
         }
     };
 
-    println!("\nOpening connection");
+    return Ok(in_port)
+}
+
+fn generate_chord_list(chord_type: ChordType, inversion: usize) -> Vec<Chord> {
+    let mut rng = thread_rng();
+    let mut chords: Vec<Chord> = note_names.iter().map(|x| Chord{root: x.to_string(), chord_type, inversion, octave: None}).collect();
+    chords.shuffle(&mut rng);
+    chords
+}
+
+fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dyn Error>> {
+    let chords = generate_chord_list(chord_type, inversion);
+
+    println!("{:?}", chords);
+
+    let mut midi_in = MidiInput::new("midir forwarding input")?;
+    midi_in.ignore(Ignore::None);
+
+    let in_port = match get_in_port(&midi_in) {
+        Ok(i)  => i,
+        Err(e) => return Err(e),
+    };
+
     let in_port_name = midi_in.port_name(in_port)?;
 
-    let mut _timer = timer::Timer::new();
-    let mut _guard = _timer.schedule_with_delay(chrono::Duration::seconds(0), chord_identify_cb);
+    println!("\nOpening connection");
+
+    let debounce_millis = 100;
 
     let _conn_in = midi_in.connect(in_port, "midir-read-input", move |_, message, _| {
+        *LAST_KEY_PRESS.lock().unwrap() = Some(Instant::now());
         process_msg(message);
-        _guard = _timer.schedule_with_delay(chrono::Duration::milliseconds(250), chord_identify_cb);
     }, ())?;
 
     println!("Connection open, reading input from '{}' (press enter to exit) ...", in_port_name);
 
     loop {
-        input.clear();
-        match stdin().read_line(&mut input) {
-            Ok(_) => {
-                match input.trim(
-                    ) {
-                    "q" => {
-                        println!("Closing connection");
-                        break;
-                    },
-                    _ => println!("Unknown command: {}", input.trim()),
+        let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
+
+        match last_key_press {
+            Some(i) => {
+                if i.elapsed().as_millis() > debounce_millis {
+                    *LAST_KEY_PRESS.lock().unwrap() = None;
+                    if KEYS_DOWN.lock().unwrap().len() > 0 {
+                        match identify_chord() {
+                            Some(i) => println!("chord: {}", i),
+                            None => {},
+                        }
+                    }
                 }
             },
-            Err(error) => println!("error: {}", error),
+            _ => {},
         }
     }
 
@@ -167,15 +219,6 @@ fn process_msg(msg: &[u8]) {
             KEYS_DOWN.lock().unwrap().remove(index);
         },
         _ => {},
-    }
-}
-
-fn chord_identify_cb() {
-    if KEYS_DOWN.lock().unwrap().len() > 0 {
-        match identify_chord() {
-            Some(i) => println!("chord: {}", i),
-            None => {},
-        }
     }
 }
 
