@@ -112,7 +112,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    return Ok(())
+    Ok(())
 }
 
 fn get_in_port(midi_in: &MidiInput) -> Result<usize, Box<dyn Error>> {
@@ -135,7 +135,7 @@ fn get_in_port(midi_in: &MidiInput) -> Result<usize, Box<dyn Error>> {
         }
     };
 
-    return Ok(in_port)
+    Ok(in_port)
 }
 
 fn generate_chord_list(chord_type: ChordType, inversion: usize) -> Vec<Chord> {
@@ -190,7 +190,7 @@ fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dy
         }
     }
 
-    return Ok(())
+    Ok(())
 }
 
 fn get_octave(key_index: u8) -> Option<u8> {
