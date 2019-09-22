@@ -309,7 +309,7 @@ fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dy
                                     println!("Try again: {}", chords[0]);
                                 }
                             },
-                            None => {},
+                            None => println!("unrecognised chord\nTry again: {}", chords[0]),
                         }
                     }
                 }
