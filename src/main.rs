@@ -13,6 +13,8 @@ use std::fmt;
 
 use midir::{MidiInput, Ignore};
 
+const note_names: &'static [&'static str] = &["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
+
 lazy_static! {
     static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
 }
@@ -140,7 +142,6 @@ fn run() -> Result<(), Box<Error>> {
 }
 
 fn get_octave(key_index: u8) -> Option<u8> {
-    let note_names = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
     let midi_start_index = 21;
 
     let note_index = key_index - midi_start_index;
@@ -149,7 +150,6 @@ fn get_octave(key_index: u8) -> Option<u8> {
 }
 
 fn get_note_name(key_index: u8) -> String {
-    let note_names = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
     let midi_start_index = 21;
 
     let note_index = key_index - midi_start_index;
