@@ -262,8 +262,6 @@ fn generate_chord_list(chord_type: ChordType, inversion: usize) -> Vec<Chord> {
 fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dyn Error>> {
     let mut chords = generate_chord_list(chord_type, inversion);
 
-    println!("{:?}", chords);
-
     let mut midi_in = MidiInput::new("midir forwarding input")?;
     midi_in.ignore(Ignore::None);
 
@@ -274,7 +272,7 @@ fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dy
 
     let in_port_name = midi_in.port_name(in_port)?;
 
-    println!("\nOpening connection");
+    println!("\nOpening connection...");
 
     let debounce_millis = 100;
 
@@ -283,7 +281,7 @@ fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dy
         process_msg(message);
     }, ())?;
 
-    println!("Connection open, reading input from '{}' (press enter to exit) ...", in_port_name);
+    println!("Connection open, reading input from '{}'. Press ^C to quit\n", in_port_name);
 
     println!("Play {}", chords[0]);
 
