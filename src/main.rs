@@ -62,6 +62,7 @@ struct Chord {
     root: String,
     chord_type: ChordType,
     inversion: usize,
+    octave: Option<u8>,
 }
 
 impl fmt::Display for Chord {
@@ -71,7 +72,12 @@ impl fmt::Display for Chord {
             _ => format!(", {} inversion", Ordinal(self.inversion)),
         };
 
-        write!(f, "{}{}{}", self.root, self.chord_type.value(), inversion_str)
+        let octave_str = match self.octave {
+            Some(i) => format!("({})", i),
+            _ => String::from("")
+        };
+
+        write!(f, "{}{}{}{}", self.root, self.chord_type.value(), inversion_str, octave_str)
     }
 }
 
@@ -106,18 +112,40 @@ fn run() -> Result<(), Box<Error>> {
     let mut _timer = timer::Timer::new();
     let mut _guard = _timer.schedule_with_delay(chrono::Duration::seconds(0), chord_identify_cb);
 
-    let _conn_in = midi_in.connect(in_port, "midir-read-input", move |stamp, message, _| {
+    let _conn_in = midi_in.connect(in_port, "midir-read-input", move |_, message, _| {
         process_msg(message);
         _guard = _timer.schedule_with_delay(chrono::Duration::milliseconds(250), chord_identify_cb);
     }, ())?;
 
     println!("Connection open, reading input from '{}' (press enter to exit) ...", in_port_name);
 
-    input.clear();
-    stdin().read_line(&mut input)?; // wait for next enter key press
+    loop {
+        input.clear();
+        match stdin().read_line(&mut input) {
+            Ok(_) => {
+                match input.trim(
+                    ) {
+                    "q" => {
+                        println!("Closing connection");
+                        break;
+                    },
+                    _ => println!("Unknown command: {}", input.trim()),
+                }
+            },
+            Err(error) => println!("error: {}", error),
+        }
+    }
 
-    println!("Closing connection");
-    Ok(())
+    return Ok(())
+}
+
+fn get_octave(key_index: u8) -> Option<u8> {
+    let note_names = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
+    let midi_start_index = 21;
+
+    let note_index = key_index - midi_start_index;
+
+    Some(note_index / note_names.len() as u8)
 }
 
 fn get_note_name(key_index: u8) -> String {
@@ -126,7 +154,7 @@ fn get_note_name(key_index: u8) -> String {
 
     let note_index = key_index - midi_start_index;
 
-    format!("{}({})", note_names[note_index as usize % note_names.len()], note_index / note_names.len() as u8)
+    note_names[note_index as usize % note_names.len()].to_string()
 }
 
 fn process_msg(msg: &[u8]) {
@@ -163,6 +191,7 @@ fn identify_chord() -> Option<Chord> {
     for inversion in 0..keys_down.len() {
         let positions: Vec<u8> = keys_down.iter().map(|x| x - keys_down[0]).collect();
         let root = get_note_name(keys_down[0]);
+        let octave = get_octave(keys_down[0]);
 
         let mut chord_type: Option<ChordType> = None;
 
@@ -183,7 +212,7 @@ fn identify_chord() -> Option<Chord> {
         }
 
         match chord_type {
-            Some(i) => return Some(Chord{root, chord_type: i, inversion}),
+            Some(i) => return Some(Chord{root, chord_type: i, inversion, octave}),
             _ => {}
         }
 
