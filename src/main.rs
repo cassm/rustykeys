@@ -5,6 +5,7 @@ extern crate ordinal;
 extern crate timer;
 extern crate chrono;
 extern crate rand;
+extern crate dialoguer;
 
 use ordinal::Ordinal;
 use std::sync::Mutex;
@@ -15,6 +16,7 @@ use std::time::Instant;
 
 use midir::{MidiInput, Ignore};
 use rand::{thread_rng, seq::SliceRandom};
+use dialoguer::{theme::ColorfulTheme, Select, Confirmation};
 
 const NOTE_NAMES: &'static [&'static str] = &["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
 
@@ -103,130 +105,43 @@ impl PartialEq for Chord {
 }
 
 fn run() -> Result<(), Box<dyn Error>> {
-    let mut input = String::new();
-
-    loop {
-        println!("Enter command: (q)uit, (p)ractise chords");
-        input.clear();
-        match stdin().read_line(&mut input) {
-            Ok(_) => {
-                match input.to_lowercase().trim() {
-                    "q" => {
-                        println!("Closing connection");
-                        break;
-                    },
-                    "p" => {
-                        practice_chords_launcher();
-                    },
-                    _ => println!("Unknown command: {}", input.trim()),
-                }
-            },
-            Err(error) => println!("error: {}", error),
-        }
-    }
-
-    Ok(())
+    practice_chords_launcher()
 }
 
-fn practice_chords_launcher() {
-    let mut input = String::new();
+fn practice_chords_launcher() -> Result<(), Box<dyn Error>> {
+    let chord_type_selections = &[
+        ("Major", ChordType::Major),
+        ("Minor", ChordType::Minor),
+        ("Diminished", ChordType::Diminished),
+        ("Major Seventh", ChordType::MajorSeventh),
+        ("Minor Seventh", ChordType::MinorSeventh),
+        ("Dominant Seventh", ChordType::DominantSeventh),
+        ("Augmented", ChordType::Augmented),
+        ("sus2", ChordType::SusTwo),
+        ("sus4", ChordType::SusFour),
+        ("7sus2", ChordType::SevenSusTwo),
+        ("7sus4", ChordType::SevenSusFour),
+        ("sus6", ChordType::SusSix )];
 
-    let mut chord_type: Option<ChordType> = None;
-    let mut inversion: Option<usize> = None;
+    let chord_variants: Vec<&str>  = chord_type_selections.iter().map(|x| x.0).collect();
 
-    while chord_type == None {
-        println!("Enter type of chords to practice: (M)ajor, (m)inor, (d)iminished, (a)ugmented, (M)ajor (7)th, (m)inor (7)7th, (d)ominant (7)th, sus2, sus4, 7sus2, 7sus4, sus6, (q)uit");
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Pick a chord variant")
+        .items(chord_variants.as_slice())
+        .interact()
+        .unwrap();
 
-        input.clear();
-        match stdin().read_line(&mut input) {
-            Ok(_) => {
-                match input.trim() {
-                    "q" => {
-                        println!("Exiting.");
-                        return;
-                    },
-                    "M" => {
-                        chord_type = Some(ChordType::Major);
-                    },
-                    "m" => {
-                        chord_type = Some(ChordType::Minor);
-                    },
-                    "d" => {
-                        chord_type = Some(ChordType::Diminished);
-                    },
-                    "a" => {
-                        chord_type = Some(ChordType::Augmented);
-                    },
-                    "M7" => {
-                        chord_type = Some(ChordType::MajorSeventh);
-                    },
-                    "m7" => {
-                        chord_type = Some(ChordType::MinorSeventh);
-                    },
-                    "d7" => {
-                        chord_type = Some(ChordType::DominantSeventh);
-                    },
-                    "sus2" => {
-                        chord_type = Some(ChordType::SusTwo);
-                    },
-                    "sus4" => {
-                        chord_type = Some(ChordType::SusFour);
-                    },
-                    "7sus2" => {
-                        chord_type = Some(ChordType::SevenSusTwo);
-                    },
-                    "7sus4" => {
-                        chord_type = Some(ChordType::SevenSusFour);
-                    },
-                    "sus6" => {
-                        chord_type = Some(ChordType::SusSix);
-                    },
-                    _ => println!("Unknown command: {}", input.trim()),
-                }
-            },
-            Err(error) => println!("error: {}", error),
-        }
-    }
+    let chord_type = chord_type_selections[selection].1;
 
-    while inversion == None {
-        println!("Enter inversion: (0..2), (q)uit");
+    let inversion_selections = [0, 1, 2];
 
-        input.clear();
-        match stdin().read_line(&mut input) {
-            Ok(_) => {
-                match input.trim() {
-                    "q" => {
-                        println!("Exiting.");
-                        return;
-                    },
-                    "0" | "1" | "2" => {
-                        inversion = Some(input.trim().parse().unwrap());
-                    },
-                    _ => println!("Unknown command: {}", input.trim()),
-                }
-            },
-            Err(error) => println!("error: {}", error),
-        }
-    }
+    let inversion = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Pick an inversion")
+        .items(&inversion_selections)
+        .interact()
+        .unwrap();
 
-    match chord_type {
-        Some(i) => {
-            match inversion {
-                Some(j) => {
-                    match practice_chords(i, j) {
-                        Err(e) => println!("{}", e),
-                        _ => {},
-                    }
-                },
-                None => {
-                    println!("inversion is undefined! this should not be possible.");
-                }
-            }
-        },
-        None => {
-            println!("chord type is undefined! this should not be possible.");
-        }
-    }
+    practice_chords(chord_type, inversion)
 }
 
 fn get_in_port(midi_in: &MidiInput) -> Result<usize, Box<dyn Error>> {
@@ -260,8 +175,6 @@ fn generate_chord_list(chord_type: ChordType, inversion: usize) -> Vec<Chord> {
 }
 
 fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dyn Error>> {
-    let mut chords = generate_chord_list(chord_type, inversion);
-
     let mut midi_in = MidiInput::new("midir forwarding input")?;
     midi_in.ignore(Ignore::None);
 
@@ -283,39 +196,50 @@ fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dy
 
     println!("Connection open, reading input from '{}'. Press ^C to quit\n", in_port_name);
 
-    println!("Play {}", chords[0]);
+    let mut replay = true;
 
-    while chords.len() > 0 {
-        let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
+    while replay {
+        let mut chords = generate_chord_list(chord_type, inversion);
 
-        match last_key_press {
-            Some(i) => {
-                if i.elapsed().as_millis() > debounce_millis {
-                    *LAST_KEY_PRESS.lock().unwrap() = None;
-                    if KEYS_DOWN.lock().unwrap().len() > 0 {
-                        match identify_chord() {
-                            Some(i) => {
-                                println!("chord: {}", i);
+        println!("Play {}", chords[0]);
 
-                                if chords[0] == i {
-                                    println!("Correct!");
-                                    chords.remove(0);
+        while chords.len() > 0 {
+            let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
 
-                                    if chords.len() > 0 {
-                                        println!("Play {}", chords[0]);
+            match last_key_press {
+                Some(i) => {
+                    if i.elapsed().as_millis() > debounce_millis {
+                        *LAST_KEY_PRESS.lock().unwrap() = None;
+                        if KEYS_DOWN.lock().unwrap().len() > 0 {
+                            match identify_chord() {
+                                Some(i) => {
+                                    println!("chord: {}", i);
+
+                                    if chords[0] == i {
+                                        println!("Correct!");
+                                        chords.remove(0);
+
+                                        if chords.len() > 0 {
+                                            println!("Play {}", chords[0]);
+                                        }
                                     }
-                                }
-                                else {
-                                    println!("Try again: {}", chords[0]);
-                                }
-                            },
-                            None => println!("unrecognised chord\nTry again: {}", chords[0]),
+                                    else {
+                                        println!("Try again: {}", chords[0]);
+                                    }
+                                },
+                                None => println!("unrecognised chord\nTry again: {}", chords[0]),
+                            }
                         }
                     }
-                }
-            },
-            _ => {},
+                },
+                _ => {},
+            }
         }
+
+        replay = Confirmation::new()
+            .with_text("Would you like to practice again?")
+            .interact()
+            .unwrap();
     }
 
     Ok(())
