@@ -32,6 +32,33 @@ fn main() {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum Hand {
+    Left,
+    Right,
+    Both,
+}
+
+impl Hand {
+    fn value(&self) -> Vec<u8> {
+       match *self {
+           Hand::Left => vec![0, 1, 2],
+           Hand::Right => vec![3, 4, 5],
+           Hand::Both => vec![0, 1, 2, 3, 4, 5],
+       }
+    }
+}
+
+impl fmt::Display for Hand {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            Hand::Left => write!(f, "Left Hand"),
+            Hand::Right => write!(f, "Right Hand"),
+            Hand::Both => write!(f, "Both Hands"),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum ChordType {
     Major,
@@ -141,7 +168,19 @@ fn practice_chords_launcher() -> Result<(), Box<dyn Error>> {
         .interact()
         .unwrap();
 
-    practice_chords(chord_type, inversion)
+    let hand_selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Which hand?")
+        .items(&["left", "right", "both"])
+        .interact()
+        .unwrap();
+
+    let hand = match hand_selection {
+        0 => Hand::Left,
+        1 => Hand::Right,
+        _ => Hand::Both,
+    };
+
+    practice_chords(chord_type, inversion, hand)
 }
 
 fn get_in_port(midi_in: &MidiInput) -> Result<usize, Box<dyn Error>> {
@@ -167,14 +206,25 @@ fn get_in_port(midi_in: &MidiInput) -> Result<usize, Box<dyn Error>> {
     Ok(in_port)
 }
 
-fn generate_chord_list(chord_type: ChordType, inversion: usize) -> Vec<Chord> {
+fn generate_chord_list(chord_type: ChordType, inversion: usize, hand: Hand) -> Vec<(Chord, Hand)> {
     let mut rng = thread_rng();
-    let mut chords: Vec<Chord> = NOTE_NAMES.iter().map(|x| Chord{root: x.to_string(), chord_type, inversion, octave: None}).collect();
+    let mut chords: Vec<(Chord, Hand)> = vec!();
+
+    if hand == Hand::Left || hand == Hand::Both {
+        let chords_to_add: Vec<(Chord, Hand)> = NOTE_NAMES.iter().map(|x| (Chord{root: x.to_string(), chord_type, inversion, octave: None}, Hand::Left)).collect();
+        chords.extend(chords_to_add);
+
+    }
+    if hand == Hand::Right || hand == Hand::Both {
+        let chords_to_add: Vec<(Chord, Hand)> = NOTE_NAMES.iter().map(|x| (Chord{root: x.to_string(), chord_type, inversion, octave: None}, Hand::Right)).collect();
+        chords.extend(chords_to_add);
+    }
+
     chords.shuffle(&mut rng);
     chords
 }
 
-fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dyn Error>> {
+fn practice_chords(chord_type: ChordType, inversion: usize, hand: Hand) -> Result<(), Box<dyn Error>> {
     let mut midi_in = MidiInput::new("midir forwarding input")?;
     midi_in.ignore(Ignore::None);
 
@@ -199,9 +249,10 @@ fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dy
     let mut replay = true;
 
     while replay {
-        let mut chords = generate_chord_list(chord_type, inversion);
+        let mut chords = generate_chord_list(chord_type, inversion, hand);
 
-        println!("Play {}", chords[0]);
+
+        println!("Play {}, {}", chords[0].0, chords[0].1);
 
         while chords.len() > 0 {
             let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
@@ -215,19 +266,24 @@ fn practice_chords(chord_type: ChordType, inversion: usize) -> Result<(), Box<dy
                                 Some(i) => {
                                     println!("chord: {}", i);
 
-                                    if chords[0] == i {
+                                    let octave_match = match i.octave {
+                                        Some(j) => chords[0].1.value().contains(&j),
+                                        None => true,
+                                    };
+
+                                    if chords[0].0 == i && octave_match {
                                         println!("Correct!");
                                         chords.remove(0);
 
                                         if chords.len() > 0 {
-                                            println!("Play {}", chords[0]);
+                                            println!("Play {}, {}", chords[0].0, chords[0].1);
                                         }
                                     }
                                     else {
-                                        println!("Try again: {}", chords[0]);
+                                        println!("Try again: {}, {}", chords[0].0, chords[0].1);
                                     }
                                 },
-                                None => println!("unrecognised chord\nTry again: {}", chords[0]),
+                                None => println!("unrecognised chord\nTry again: {}, {}", chords[0].0, chords[0].1),
                             }
                         }
                     }
