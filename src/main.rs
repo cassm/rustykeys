@@ -19,6 +19,7 @@ use rand::{thread_rng, seq::SliceRandom};
 use dialoguer::{theme::ColorfulTheme, Select, Confirmation};
 
 const NOTE_NAMES: &'static [&'static str] = &["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
+const MAJOR_SCALE_INTERVALS: &'static [usize] = &[2, 2, 1, 2, 2, 2, 1];
 
 lazy_static! {
     static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
@@ -132,7 +133,21 @@ impl PartialEq for Chord {
 }
 
 fn run() -> Result<(), Box<dyn Error>> {
-    practice_chords_launcher()
+    let options = &[
+        "Practice chords",
+        "Practice scales",
+    ];
+
+    match Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Pick a root note")
+        .items(options)
+        .interact()
+        .unwrap()
+    {
+        0 => practice_chords_launcher(),
+        1 => generate_scale(),
+        _ => Ok(()),
+    }
 }
 
 fn practice_chords_launcher() -> Result<(), Box<dyn Error>> {
@@ -372,4 +387,43 @@ fn identify_chord() -> Option<Chord> {
     }
 
     return None
+}
+
+fn generate_scale() -> Result<(), Box<dyn Error>> {
+    let scale_types: &'static [&'static str] = &[
+        "I - Ionian (major scale)",
+        "II - Dorian (a minor scale with a sharp 6th, gives it a bit of a jazzy/upbeat vibe)",
+        "III - Phrygian (very common in metal or spanish classical. Really brooding, depressing mode)",
+        "IV - Lydian (Kind of spacey and dreamy, like a major scale that is tripping)",
+        "V - Mixolydian (bluesy)",
+        "VI - Aeolian (minor scale, omnipresent in music)",
+        "VII - Locrian (rarely used)",
+    ];
+
+    let root = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Pick a root note")
+        .items(NOTE_NAMES)
+        .interact()
+        .unwrap();
+
+    let scale_type = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Pick a scale type")
+        .items(scale_types)
+        .interact()
+        .unwrap();
+
+    let mut scale: Vec<String> = vec!();
+    let mut offset: usize = 0;
+
+    for i in 0..MAJOR_SCALE_INTERVALS.len() {
+        let note_index = (root + offset) % NOTE_NAMES.len();
+        scale.push(NOTE_NAMES[note_index].to_string());
+
+        let interval_index = (i + scale_type) % MAJOR_SCALE_INTERVALS.len();
+        offset += MAJOR_SCALE_INTERVALS[interval_index];
+    }
+
+    println!("{:?}", scale);
+
+    Ok(())
 }
