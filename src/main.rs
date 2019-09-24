@@ -1,3 +1,11 @@
+// TODO implement grading and spaced repetition
+// TODO choose a scale type and practice all of the scales of that mode
+// TODO chord progression practice
+// TODO sight reading practice
+// TODO riff practice
+// TODO chord-to-chord practice
+// TODO split into separate files oh my god
+
 #[macro_use]
 extern crate lazy_static;
 extern crate midir;
