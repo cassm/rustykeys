@@ -1,5 +1,4 @@
 // TODO implement grading and spaced repetition
-// TODO choose a scale type and practice all of the scales of that mode
 // TODO chord progression practice
 // TODO sight reading practice
 // TODO riff practice
@@ -15,6 +14,7 @@ extern crate chrono;
 extern crate rand;
 extern crate dialoguer;
 extern crate termion;
+extern crate ndarray;
 
 use ordinal::Ordinal;
 use std::sync::Mutex;
@@ -23,6 +23,7 @@ use std::error::Error;
 use std::fmt;
 use std::time::{self, Instant};
 use std::thread;
+use ndarray::Array2;
 
 use midir::{MidiInput, Ignore};
 use rand::{thread_rng, seq::SliceRandom};
@@ -267,7 +268,6 @@ fn practice_chords(chord_type: ChordType, inversion: usize, hand: Hand) -> Resul
     println!("\nOpening connection...");
 
     let _conn_in = midi_in.connect(in_port, "midir-read-input", move |_, message, _| {
-        *LAST_KEY_PRESS.lock().unwrap() = Some(Instant::now());
         process_msg(message);
     }, ())?;
 
@@ -358,6 +358,7 @@ fn note_matches(key_index: u8, note: &str) -> bool {
 fn process_msg(msg: &[u8]) {
     match msg[0] {
         0x90 => {
+            *LAST_KEY_PRESS.lock().unwrap() = Some(Instant::now());
             KEYS_DOWN.lock().unwrap().push(msg[1]);
         },
         0x80 => {
@@ -435,35 +436,42 @@ fn practice_scales_launcher() -> Result<(), Box<dyn Error>> {
     let mut replay = true;
 
     while replay {
-        let mut scale = generate_scale();
+        let scales = generate_scales();
 
-        while scale.len() > 0 {
-            let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
+        for scale in scales.outer_iter() {
+            print!("{}: ", scale[0]);
+            stdout().flush()?;
 
-            match last_key_press {
-                Some(_) => {
-                    *LAST_KEY_PRESS.lock().unwrap() = None;
+            for note in scale.iter() {
+                loop {
+                    let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
 
-                    if let Some(i) = KEYS_DOWN.lock().unwrap().last() {
-                        if note_matches(*i, &scale[0]) {
-                            // delete incorrect input
-                            print!("{}{}{} ", color::Fg(color::Green), scale[0], color::Fg(color::Reset));
-                            stdout().flush()?;
-                            scale.remove(0);
-                            thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
+                    match last_key_press {
+                        Some(i) => {
+                            if i.elapsed().as_millis() > DEBOUNCE_MILLIS.into() {
+                                *LAST_KEY_PRESS.lock().unwrap() = None;
+
+                                if let Some(i) = KEYS_DOWN.lock().unwrap().last() {
+                                    if note_matches(*i, &note) {
+                                        // delete incorrect input
+                                        print!("{}{}{} ", color::Fg(color::Green), note, color::Fg(color::Reset));
+                                        stdout().flush()?;
+                                        break;
+                                    }
+                                    else {
+                                        print!("{}{}{} ", color::Fg(color::Red), get_note_name(*i), color::Fg(color::Reset));
+                                        stdout().flush()?;
+                                    }
+                                }
+                            }
                         }
-                        else {
-                            print!("{}{}{} ", color::Fg(color::Red), get_note_name(*i), color::Fg(color::Reset));
-                            stdout().flush()?;
-                            thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
-                        }
-
+                        _ => {},
                     }
                 }
-                _ => {},
             }
+
+            println!("");
         }
-        println!("");
 
         replay = Confirmation::new()
             .with_text("Would you like to practice again?")
@@ -473,7 +481,7 @@ fn practice_scales_launcher() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn generate_scales() -> Vec<Vec<String>> {
+fn generate_scales() -> Array2::<String> {
     let modes: &'static [&'static str] = &[
         "I   - Ionian (major scale)",
         "II  - Dorian (a minor scale with a sharp 6th, gives it a bit of a jazzy/upbeat vibe)",
@@ -491,35 +499,30 @@ fn generate_scales() -> Vec<Vec<String>> {
         .unwrap();
 
     let mut rng = thread_rng();
-    let root_indices: usize = [0..NOTE_NAMES.len()].shuffle(&mut rng);
+    let mut root_indices: Vec<usize> = (0..NOTE_NAMES.len()).collect();
+    root_indices.shuffle(&mut rng);
 
-    let mut scales: Vec<Vec<String>> = vec!();
+    let mut scales = Array2::<String>::default((NOTE_NAMES.len(), MAJOR_SCALE_INTERVALS.len()*2 + 1));
 
-    for root_index in root_indices.iter() {
-        let mut scale: Vec<String> = vec!();
+    for (i, root_index) in root_indices.iter().enumerate() {
         let mut offset: usize = 0;
 
-        for i in 0..MAJOR_SCALE_INTERVALS.len() + 1 {
+        for j in 0..MAJOR_SCALE_INTERVALS.len() + 1 {
             let note_index = (root_index + offset) % NOTE_NAMES.len();
 
             // use the correct sharp or flat
-            if let Some(j) = scale.last() {
-                if NOTE_NAMES[note_index].len() > 1 && NOTE_NAMES[note_index][0][..1] == j[..1] {
-                    scale.push(NOTE_NAMES[note_index][1].to_string());
-                }
-                else {
-                    scale.push(NOTE_NAMES[note_index][0].to_string());
-                }
+            if j > 0 && NOTE_NAMES[note_index].len() > 1 && NOTE_NAMES[note_index][0][..1] == scales[[i, j-1]][..1] {
+                scales[[i, j]] = NOTE_NAMES[note_index][1].to_string();
+                scales[[i, MAJOR_SCALE_INTERVALS.len()*2 - j]] = NOTE_NAMES[note_index][1].to_string();
             }
             else {
-                scale.push(NOTE_NAMES[note_index][0].to_string());
+                scales[[i, j]] = NOTE_NAMES[note_index][0].to_string();
+                scales[[i, MAJOR_SCALE_INTERVALS.len()*2 - j]] = NOTE_NAMES[note_index][0].to_string();
             }
 
-            let interval_index = (i + mode_offset) % MAJOR_SCALE_INTERVALS.len();
+            let interval_index = (j + mode_offset) % MAJOR_SCALE_INTERVALS.len();
             offset += MAJOR_SCALE_INTERVALS[interval_index];
         }
-
-        scales.push(scale);
     }
 
     scales
