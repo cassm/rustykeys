@@ -473,7 +473,7 @@ fn practice_scales_launcher() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn generate_scale() -> Vec<String> {
+fn generate_scales() -> Vec<Vec<String>> {
     let modes: &'static [&'static str] = &[
         "I   - Ionian (major scale)",
         "II  - Dorian (a minor scale with a sharp 6th, gives it a bit of a jazzy/upbeat vibe)",
@@ -484,42 +484,43 @@ fn generate_scale() -> Vec<String> {
         "VII - Locrian (rarely used)",
      ];
 
-    let note_names: Vec<&str> = NOTE_NAMES.iter().map(|x| x[0]).collect();
-
-    let root_index = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Pick a root note")
-        .items(note_names.as_slice())
-        .interact()
-        .unwrap();
-
     let mode_offset = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Pick a scale type")
         .items(modes)
         .interact()
         .unwrap();
 
-    let mut scale: Vec<String> = vec!();
-    let mut offset: usize = 0;
+    let mut rng = thread_rng();
+    let root_indices: usize = [0..NOTE_NAMES.len()].shuffle(&mut rng);
 
-    for i in 0..MAJOR_SCALE_INTERVALS.len() + 1 {
-        let note_index = (root_index + offset) % NOTE_NAMES.len();
+    let mut scales: Vec<Vec<String>> = vec!();
 
-        // use the correct sharp or flat
-        if let Some(j) = scale.last() {
-            if NOTE_NAMES[note_index].len() > 1 && NOTE_NAMES[note_index][0][..1] == j[..1] {
-                scale.push(NOTE_NAMES[note_index][1].to_string());
+    for root_index in root_indices.iter() {
+        let mut scale: Vec<String> = vec!();
+        let mut offset: usize = 0;
+
+        for i in 0..MAJOR_SCALE_INTERVALS.len() + 1 {
+            let note_index = (root_index + offset) % NOTE_NAMES.len();
+
+            // use the correct sharp or flat
+            if let Some(j) = scale.last() {
+                if NOTE_NAMES[note_index].len() > 1 && NOTE_NAMES[note_index][0][..1] == j[..1] {
+                    scale.push(NOTE_NAMES[note_index][1].to_string());
+                }
+                else {
+                    scale.push(NOTE_NAMES[note_index][0].to_string());
+                }
             }
             else {
                 scale.push(NOTE_NAMES[note_index][0].to_string());
             }
-        }
-        else {
-            scale.push(NOTE_NAMES[note_index][0].to_string());
+
+            let interval_index = (i + mode_offset) % MAJOR_SCALE_INTERVALS.len();
+            offset += MAJOR_SCALE_INTERVALS[interval_index];
         }
 
-        let interval_index = (i + mode_offset) % MAJOR_SCALE_INTERVALS.len();
-        offset += MAJOR_SCALE_INTERVALS[interval_index];
+        scales.push(scale);
     }
 
-    scale
+    scales
 }
