@@ -109,7 +109,14 @@ fn practice_chords_launcher() -> Result<(), Box<dyn Error>> {
         _ => Hand::Both,
     };
 
-    practice_chords(chord_type, inversion, hand)
+    match midi_connect() {
+        Err(e) => Err(e),
+        Ok(conn_in) => {
+            let result = practice_chords(chord_type, inversion, hand)
+            conn_in.close();
+            result
+        }
+    }
 }
 
 fn generate_chord_list(chord_type: ChordType, inversion: usize, hand: Hand) -> Vec<(Chord, Hand)> {
@@ -131,68 +138,62 @@ fn generate_chord_list(chord_type: ChordType, inversion: usize, hand: Hand) -> V
 }
 
 fn practice_chords(chord_type: ChordType, inversion: usize, hand: Hand) -> Result<(), Box<dyn Error>> {
-    match midi_connect() {
-        Err(e) => Err(e),
-        Ok(conn_in) => {
-            let mut replay = true;
+    let mut replay = true;
 
-            while replay {
-                let mut chords = generate_chord_list(chord_type, inversion, hand);
+    while replay {
+        let mut chords = generate_chord_list(chord_type, inversion, hand);
 
 
-                println!("Play {}, {}", chords[0].0, chords[0].1);
+        println!("Play {}, {}", chords[0].0, chords[0].1);
 
-                while chords.len() > 0 {
-                    let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
+        while chords.len() > 0 {
+            let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
 
-                    match last_key_press {
-                        Some(i) => {
-                            if i.elapsed().as_millis() > DEBOUNCE_MILLIS.into() {
-                                *LAST_KEY_PRESS.lock().unwrap() = None;
-                                if KEYS_DOWN.lock().unwrap().len() > 0 {
-                                    match identify_chord() {
-                                        Some(i) => {
-                                            let octave_match = match i.octave {
-                                                Some(j) => chords[0].1.value().contains(&j),
-                                                None => true,
-                                            };
+            match last_key_press {
+                Some(i) => {
+                    if i.elapsed().as_millis() > DEBOUNCE_MILLIS.into() {
+                        *LAST_KEY_PRESS.lock().unwrap() = None;
+                        if KEYS_DOWN.lock().unwrap().len() > 0 {
+                            match identify_chord() {
+                                Some(i) => {
+                                    let octave_match = match i.octave {
+                                        Some(j) => chords[0].1.value().contains(&j),
+                                        None => true,
+                                    };
 
-                                            if chords[0].0 == i && octave_match {
-                                                println!("{}Correct!{}", color::Fg(color::Green), color::Fg(color::Reset));
-                                                chords.remove(0);
-                                                thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
+                                    if chords[0].0 == i && octave_match {
+                                        println!("{}Correct!{}", color::Fg(color::Green), color::Fg(color::Reset));
+                                        chords.remove(0);
+                                        thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
 
-                                                if chords.len() > 0 {
-                                                    println!("Play {}, {}", chords[0].0, chords[0].1);
-                                                }
-                                            }
-                                            else {
-                                                println!("{}Try again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
-                                                thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
-                                            }
-                                        },
-                                        None => {
-                                            println!("{}unrecognised chord\nTry again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
-                                            thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
+                                        if chords.len() > 0 {
+                                            println!("Play {}, {}", chords[0].0, chords[0].1);
                                         }
                                     }
+                                    else {
+                                        println!("{}Try again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
+                                        thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
+                                    }
+                                },
+                                None => {
+                                    println!("{}unrecognised chord\nTry again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
+                                    thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
                                 }
                             }
-                        },
-                        _ => {},
+                        }
                     }
-                }
-
-                replay = Confirmation::new()
-                    .with_text("Would you like to practice again?")
-                    .interact()
-                    .unwrap();
+                },
+                _ => {},
             }
-
-            conn_in.close();
-            Ok(())
         }
+
+        replay = Confirmation::new()
+            .with_text("Would you like to practice again?")
+            .interact()
+            .unwrap();
     }
+
+    Ok(())
 }
 
 fn get_octave(key_index: u8) -> Option<u8> {
@@ -280,63 +281,64 @@ fn practice_scales_launcher() -> Result<(), Box<dyn Error>> {
         .interact()
         .unwrap();
 
-    practice_scales(mode_offset)
+    match midi_connect() {
+        Err(e) => Err(e),
+        Ok(conn_in) => {
+            let result = practice_scales(mode_offset);
+            conn_in.close();
+            result
+        }
+    }
 }
 
 fn practice_scales(mode_offset: usize) -> Result<(), Box<dyn Error>> {
     let mut replay = true;
 
-    match midi_connect() {
-        Err(e) => Err(e),
-        Ok(conn_in) => {
-            while replay {
-                let scales = generate_scales(mode_offset);
+    while replay {
+        let scales = generate_scales(mode_offset);
 
-                for scale in scales.outer_iter() {
-                    print!("{}: ", scale[0]);
-                    stdout().flush()?;
+        for scale in scales.outer_iter() {
+            print!("{}: ", scale[0]);
+            stdout().flush()?;
 
-                    for note in scale.iter() {
-                        loop {
-                            let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
+            for note in scale.iter() {
+                loop {
+                    let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
 
-                            match last_key_press {
-                                Some(i) => {
-                                    if i.elapsed().as_millis() > DEBOUNCE_MILLIS.into() {
-                                        *LAST_KEY_PRESS.lock().unwrap() = None;
+                    match last_key_press {
+                        Some(i) => {
+                            if i.elapsed().as_millis() > DEBOUNCE_MILLIS.into() {
+                                *LAST_KEY_PRESS.lock().unwrap() = None;
 
-                                        if let Some(i) = KEYS_DOWN.lock().unwrap().last() {
-                                            if note_matches(*i, &note) {
-                                                // delete incorrect input
-                                                print!("{}{}{} ", color::Fg(color::Green), note, color::Fg(color::Reset));
-                                                stdout().flush()?;
-                                                break;
-                                            }
-                                            else {
-                                                print!("{}{}{} ", color::Fg(color::Red), get_note_name(*i), color::Fg(color::Reset));
-                                                stdout().flush()?;
-                                            }
-                                        }
+                                if let Some(i) = KEYS_DOWN.lock().unwrap().last() {
+                                    if note_matches(*i, &note) {
+                                        // delete incorrect input
+                                        print!("{}{}{} ", color::Fg(color::Green), note, color::Fg(color::Reset));
+                                        stdout().flush()?;
+                                        break;
+                                    }
+                                    else {
+                                        print!("{}{}{} ", color::Fg(color::Red), get_note_name(*i), color::Fg(color::Reset));
+                                        stdout().flush()?;
                                     }
                                 }
-                                _ => {},
                             }
                         }
+                        _ => {},
                     }
-
-                    println!("");
                 }
-
-                replay = Confirmation::new()
-                    .with_text("Would you like to practice again?")
-                    .interact()
-                    .unwrap();
             }
 
-            conn_in.close();
-            Ok(())
+            println!("");
         }
+
+        replay = Confirmation::new()
+            .with_text("Would you like to practice again?")
+            .interact()
+            .unwrap();
     }
+
+    Ok(())
 }
 
 fn generate_scales(mode_offset: usize) -> Array2::<String> {
