@@ -16,11 +16,11 @@ extern crate dialoguer;
 extern crate termion;
 extern crate ndarray;
 
-use ordinal::Ordinal;
+mod utils;
+
 use std::sync::Mutex;
 use std::io::{stdin, stdout, Write};
 use std::error::Error;
-use std::fmt;
 use std::time::{self, Instant};
 use std::thread;
 use ndarray::Array2;
@@ -30,11 +30,12 @@ use rand::{thread_rng, seq::SliceRandom};
 use dialoguer::{theme::ColorfulTheme, Select, Confirmation};
 use termion::color;
 
+use utils::{
+    constants::{NOTE_NAMES, MAJOR_SCALE_INTERVALS},
+    types::{Hand, ChordType, Chord},
+};
 
-const NOTE_NAMES: &'static [&'static [&'static str]] = &[&["A"], &["A#", "Bb"], &["B"], &["C"], &["C#", "Db"], &["D"], &["D#", "Eb"], &["E"], &["F"], &["F#", "Gb"], &["G"], &["G#", "Ab"]];
-const MAJOR_SCALE_INTERVALS: &'static [usize] = &[2, 2, 1, 2, 2, 2, 1];
 const DEBOUNCE_MILLIS: u64 = 100;
-
 
 lazy_static! {
     static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
@@ -45,105 +46,6 @@ fn main() {
     match run() {
         Ok(_) => (),
         Err(err) => println!("Error: {}", err.description())
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum Hand {
-    Left,
-    Right,
-    Both,
-}
-
-impl Hand {
-    fn value(&self) -> Vec<u8> {
-       match *self {
-           Hand::Left => vec![0, 1, 2],
-           Hand::Right => vec![3, 4, 5],
-           Hand::Both => vec![0, 1, 2, 3, 4, 5],
-       }
-    }
-}
-
-impl fmt::Display for Hand {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self {
-            Hand::Left => write!(f, "Left Hand"),
-            Hand::Right => write!(f, "Right Hand"),
-            Hand::Both => write!(f, "Both Hands"),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum ChordType {
-    Major,
-    Minor,
-    Diminished,
-    MajorSeventh,
-    MinorSeventh,
-    DominantSeventh,
-    Augmented,
-    SusTwo,
-    SusFour,
-    SevenSusTwo,
-    SevenSusFour,
-    SusSix,
-}
-
-impl ChordType {
-    fn value(&self) -> String {
-       match *self {
-           ChordType::Major => "".to_string(),
-           ChordType::Minor => "m".to_string(),
-           ChordType::Diminished => "dim".to_string(),
-           ChordType::MajorSeventh => "maj7".to_string(),
-           ChordType::MinorSeventh => "min7".to_string(),
-           ChordType::DominantSeventh => "dom7".to_string(),
-           ChordType::Augmented => "aug".to_string(),
-           ChordType::SusTwo => "sus2".to_string(),
-           ChordType::SusFour => "sus4".to_string(),
-           ChordType::SevenSusTwo => "7sus2".to_string(),
-           ChordType::SevenSusFour => "7sus4".to_string(),
-           ChordType::SusSix => "sus6".to_string(),
-        }
-    }
-}
-
-#[derive(Debug)]
-struct Chord {
-    root: String,
-    chord_type: ChordType,
-    inversion: usize,
-    octave: Option<u8>,
-}
-
-impl fmt::Display for Chord {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let inversion_str = match self.inversion {
-            0 => String::from(""),
-            _ => format!(", {} inversion", Ordinal(self.inversion)),
-        };
-
-        let octave_str = match self.octave {
-            Some(i) => format!("({})", i),
-            _ => String::from("")
-        };
-
-        write!(f, "{}{}{}{}", self.root, self.chord_type.value(), inversion_str, octave_str)
-    }
-}
-
-impl PartialEq for Chord {
-    fn eq(&self, other: &Self) -> bool {
-        if self.root != other.root
-            || self.chord_type != other.chord_type
-            || self.inversion != other.inversion
-            || (self.octave != None && other.octave != None && self.octave != other.octave) {
-            return false;
-        }
-
-        return true;
     }
 }
 
