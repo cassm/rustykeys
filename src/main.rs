@@ -17,14 +17,14 @@ extern crate termion;
 extern crate ndarray;
 
 mod utils;
+mod midi;
 
-use std::io::{stdin, stdout, Write};
+use std::io::{stdout, Write};
 use std::error::Error;
-use std::time::{self, Instant};
+use std::time;
 use std::thread;
 use ndarray::Array2;
 
-use midir::{MidiInput, Ignore};
 use rand::{thread_rng, seq::SliceRandom};
 use dialoguer::{theme::ColorfulTheme, Select, Confirmation};
 use termion::color;
@@ -34,6 +34,8 @@ use utils::{
     constants::{NOTE_NAMES, MAJOR_SCALE_INTERVALS},
     types::{Hand, ChordType, Chord},
 };
+
+use midi::midi_connect;
 
 const DEBOUNCE_MILLIS: u64 = 100;
 
@@ -110,29 +112,6 @@ fn practice_chords_launcher() -> Result<(), Box<dyn Error>> {
     practice_chords(chord_type, inversion, hand)
 }
 
-fn get_in_port(midi_in: &MidiInput) -> Result<usize, Box<dyn Error>> {
-    let in_port = match midi_in.port_count() {
-        0 => return Err("no input port found".into()),
-        1 => {
-            println!("Choosing the only available input port: {}", midi_in.port_name(0).unwrap());
-            0
-        },
-        _ => {
-            println!("\nAvailable input ports:");
-            for i in 0..midi_in.port_count() {
-                println!("{}: {}", i, midi_in.port_name(i).unwrap())
-            }
-            print!("Please select input port: ");
-            stdout().flush()?;
-            let mut input = String::new();
-            stdin().read_line(&mut input)?;
-            input.trim().parse::<usize>()?
-        }
-    };
-
-    Ok(in_port)
-}
-
 fn generate_chord_list(chord_type: ChordType, inversion: usize, hand: Hand) -> Vec<(Chord, Hand)> {
     let mut rng = thread_rng();
     let mut chords: Vec<(Chord, Hand)> = vec!();
@@ -152,80 +131,68 @@ fn generate_chord_list(chord_type: ChordType, inversion: usize, hand: Hand) -> V
 }
 
 fn practice_chords(chord_type: ChordType, inversion: usize, hand: Hand) -> Result<(), Box<dyn Error>> {
-    let mut midi_in = MidiInput::new("midir forwarding input")?;
-    midi_in.ignore(Ignore::None);
+    match midi_connect() {
+        Err(e) => Err(e),
+        Ok(conn_in) => {
+            let mut replay = true;
 
-    let in_port = match get_in_port(&midi_in) {
-        Ok(i)  => i,
-        Err(e) => return Err(e),
-    };
-
-    let in_port_name = midi_in.port_name(in_port)?;
-
-    println!("\nOpening connection...");
-
-    let _conn_in = midi_in.connect(in_port, "midir-read-input", move |_, message, _| {
-        process_msg(message);
-    }, ())?;
-
-    println!("Connection open, reading input from '{}'. Press ^C to quit\n", in_port_name);
-
-    let mut replay = true;
-
-    while replay {
-        let mut chords = generate_chord_list(chord_type, inversion, hand);
+            while replay {
+                let mut chords = generate_chord_list(chord_type, inversion, hand);
 
 
-        println!("Play {}, {}", chords[0].0, chords[0].1);
+                println!("Play {}, {}", chords[0].0, chords[0].1);
 
-        while chords.len() > 0 {
-            let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
+                while chords.len() > 0 {
+                    let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
 
-            match last_key_press {
-                Some(i) => {
-                    if i.elapsed().as_millis() > DEBOUNCE_MILLIS.into() {
-                        *LAST_KEY_PRESS.lock().unwrap() = None;
-                        if KEYS_DOWN.lock().unwrap().len() > 0 {
-                            match identify_chord() {
-                                Some(i) => {
-                                    let octave_match = match i.octave {
-                                        Some(j) => chords[0].1.value().contains(&j),
-                                        None => true,
-                                    };
+                    match last_key_press {
+                        Some(i) => {
+                            if i.elapsed().as_millis() > DEBOUNCE_MILLIS.into() {
+                                *LAST_KEY_PRESS.lock().unwrap() = None;
+                                if KEYS_DOWN.lock().unwrap().len() > 0 {
+                                    match identify_chord() {
+                                        Some(i) => {
+                                            let octave_match = match i.octave {
+                                                Some(j) => chords[0].1.value().contains(&j),
+                                                None => true,
+                                            };
 
-                                    if chords[0].0 == i && octave_match {
-                                        println!("{}Correct!{}", color::Fg(color::Green), color::Fg(color::Reset));
-                                        chords.remove(0);
-                                        thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
+                                            if chords[0].0 == i && octave_match {
+                                                println!("{}Correct!{}", color::Fg(color::Green), color::Fg(color::Reset));
+                                                chords.remove(0);
+                                                thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
 
-                                        if chords.len() > 0 {
-                                            println!("Play {}, {}", chords[0].0, chords[0].1);
+                                                if chords.len() > 0 {
+                                                    println!("Play {}, {}", chords[0].0, chords[0].1);
+                                                }
+                                            }
+                                            else {
+                                                println!("{}Try again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
+                                                thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
+                                            }
+                                        },
+                                        None => {
+                                            println!("{}unrecognised chord\nTry again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
+                                            thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
                                         }
                                     }
-                                    else {
-                                        println!("{}Try again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
-                                        thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
-                                    }
-                                },
-                                None => {
-                                    println!("{}unrecognised chord\nTry again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
-                                    thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
                                 }
                             }
-                        }
+                        },
+                        _ => {},
                     }
-                },
-                _ => {},
+                }
+
+                replay = Confirmation::new()
+                    .with_text("Would you like to practice again?")
+                    .interact()
+                    .unwrap();
             }
+
+            conn_in.close();
+            Ok(())
         }
-
-        replay = Confirmation::new()
-            .with_text("Would you like to practice again?")
-            .interact()
-            .unwrap();
     }
-
-    Ok(())
 }
 
 fn get_octave(key_index: u8) -> Option<u8> {
@@ -250,20 +217,6 @@ fn note_matches(key_index: u8, note: &str) -> bool {
     let note_index = key_index - midi_start_index;
 
     return NOTE_NAMES[note_index as usize % NOTE_NAMES.len()].contains(&note);
-}
-
-fn process_msg(msg: &[u8]) {
-    match msg[0] {
-        0x90 => {
-            *LAST_KEY_PRESS.lock().unwrap() = Some(Instant::now());
-            KEYS_DOWN.lock().unwrap().push(msg[1]);
-        },
-        0x80 => {
-            let index = KEYS_DOWN.lock().unwrap().iter().position(|x| *x == msg[1]).unwrap();
-            KEYS_DOWN.lock().unwrap().remove(index);
-        },
-        _ => {},
-    }
 }
 
 fn identify_chord() -> Option<Chord> {
@@ -311,71 +264,59 @@ fn identify_chord() -> Option<Chord> {
 }
 
 fn practice_scales_launcher() -> Result<(), Box<dyn Error>> {
-    let mut midi_in = MidiInput::new("midir forwarding input")?;
-    midi_in.ignore(Ignore::None);
-
-    let in_port = match get_in_port(&midi_in) {
-        Ok(i)  => i,
-        Err(e) => return Err(e),
-    };
-
-    let in_port_name = midi_in.port_name(in_port)?;
-
-    println!("\nOpening connection...");
-
-    let _conn_in = midi_in.connect(in_port, "midir-read-input", move |_, message, _| {
-        *LAST_KEY_PRESS.lock().unwrap() = Some(Instant::now());
-        process_msg(message);
-    }, ())?;
-
-    println!("Connection open, reading input from '{}'. Press ^C to quit\n", in_port_name);
-
     let mut replay = true;
 
-    while replay {
-        let scales = generate_scales();
+    match midi_connect() {
+        Err(e) => Err(e),
+        Ok(conn_in) => {
+            while replay {
+                let scales = generate_scales();
 
-        for scale in scales.outer_iter() {
-            print!("{}: ", scale[0]);
-            stdout().flush()?;
+                for scale in scales.outer_iter() {
+                    print!("{}: ", scale[0]);
+                    stdout().flush()?;
 
-            for note in scale.iter() {
-                loop {
-                    let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
+                    for note in scale.iter() {
+                        loop {
+                            let last_key_press = *LAST_KEY_PRESS.lock().unwrap();
 
-                    match last_key_press {
-                        Some(i) => {
-                            if i.elapsed().as_millis() > DEBOUNCE_MILLIS.into() {
-                                *LAST_KEY_PRESS.lock().unwrap() = None;
+                            match last_key_press {
+                                Some(i) => {
+                                    if i.elapsed().as_millis() > DEBOUNCE_MILLIS.into() {
+                                        *LAST_KEY_PRESS.lock().unwrap() = None;
 
-                                if let Some(i) = KEYS_DOWN.lock().unwrap().last() {
-                                    if note_matches(*i, &note) {
-                                        // delete incorrect input
-                                        print!("{}{}{} ", color::Fg(color::Green), note, color::Fg(color::Reset));
-                                        stdout().flush()?;
-                                        break;
-                                    }
-                                    else {
-                                        print!("{}{}{} ", color::Fg(color::Red), get_note_name(*i), color::Fg(color::Reset));
-                                        stdout().flush()?;
+                                        if let Some(i) = KEYS_DOWN.lock().unwrap().last() {
+                                            if note_matches(*i, &note) {
+                                                // delete incorrect input
+                                                print!("{}{}{} ", color::Fg(color::Green), note, color::Fg(color::Reset));
+                                                stdout().flush()?;
+                                                break;
+                                            }
+                                            else {
+                                                print!("{}{}{} ", color::Fg(color::Red), get_note_name(*i), color::Fg(color::Reset));
+                                                stdout().flush()?;
+                                            }
+                                        }
                                     }
                                 }
+                                _ => {},
                             }
                         }
-                        _ => {},
                     }
+
+                    println!("");
                 }
+
+                replay = Confirmation::new()
+                    .with_text("Would you like to practice again?")
+                    .interact()
+                    .unwrap();
             }
 
-            println!("");
+            conn_in.close();
+            Ok(())
         }
-
-        replay = Confirmation::new()
-            .with_text("Would you like to practice again?")
-            .interact()
-            .unwrap();
     }
-    Ok(())
 }
 
 fn generate_scales() -> Array2::<String> {
