@@ -18,7 +18,6 @@ extern crate ndarray;
 
 mod utils;
 
-use std::sync::Mutex;
 use std::io::{stdin, stdout, Write};
 use std::error::Error;
 use std::time::{self, Instant};
@@ -31,16 +30,12 @@ use dialoguer::{theme::ColorfulTheme, Select, Confirmation};
 use termion::color;
 
 use utils::{
+    mutex::{KEYS_DOWN, LAST_KEY_PRESS},
     constants::{NOTE_NAMES, MAJOR_SCALE_INTERVALS},
     types::{Hand, ChordType, Chord},
 };
 
 const DEBOUNCE_MILLIS: u64 = 100;
-
-lazy_static! {
-    static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
-    static ref LAST_KEY_PRESS: Mutex<Option<Instant>> = Mutex::new(None);
-}
 
 fn main() {
     match run() {

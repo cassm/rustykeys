@@ -1,3 +1,13 @@
+pub mod mutex {
+    use std::sync::Mutex;
+    use std::time::Instant;
+
+    lazy_static! {
+        pub static ref KEYS_DOWN: Mutex<Vec<u8>> = Mutex::new(vec![]);
+        pub static ref LAST_KEY_PRESS: Mutex<Option<Instant>> = Mutex::new(None);
+    }
+}
+
 pub mod constants {
     pub const NOTE_NAMES: &'static [&'static [&'static str]] = &[
         &["A"],
