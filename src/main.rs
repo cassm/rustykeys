@@ -264,13 +264,33 @@ fn identify_chord() -> Option<Chord> {
 }
 
 fn practice_scales_launcher() -> Result<(), Box<dyn Error>> {
+    let modes: &'static [&'static str] = &[
+        "I   - Ionian (major scale)",
+        "II  - Dorian (a minor scale with a sharp 6th, gives it a bit of a jazzy/upbeat vibe)",
+        "III - Phrygian (very common in metal or spanish classical. Really brooding, depressing mode)",
+        "IV  - Lydian (Kind of spacey and dreamy, like a major scale that is tripping)",
+        "V   - Mixolydian (bluesy)",
+        "VI  - Aeolian (minor scale, omnipresent in music)",
+        "VII - Locrian (rarely used)",
+     ];
+
+    let mode_offset = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Pick a scale type")
+        .items(modes)
+        .interact()
+        .unwrap();
+
+    practice_scales(mode_offset)
+}
+
+fn practice_scales(mode_offset: usize) -> Result<(), Box<dyn Error>> {
     let mut replay = true;
 
     match midi_connect() {
         Err(e) => Err(e),
         Ok(conn_in) => {
             while replay {
-                let scales = generate_scales();
+                let scales = generate_scales(mode_offset);
 
                 for scale in scales.outer_iter() {
                     print!("{}: ", scale[0]);
@@ -319,23 +339,7 @@ fn practice_scales_launcher() -> Result<(), Box<dyn Error>> {
     }
 }
 
-fn generate_scales() -> Array2::<String> {
-    let modes: &'static [&'static str] = &[
-        "I   - Ionian (major scale)",
-        "II  - Dorian (a minor scale with a sharp 6th, gives it a bit of a jazzy/upbeat vibe)",
-        "III - Phrygian (very common in metal or spanish classical. Really brooding, depressing mode)",
-        "IV  - Lydian (Kind of spacey and dreamy, like a major scale that is tripping)",
-        "V   - Mixolydian (bluesy)",
-        "VI  - Aeolian (minor scale, omnipresent in music)",
-        "VII - Locrian (rarely used)",
-     ];
-
-    let mode_offset = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Pick a scale type")
-        .items(modes)
-        .interact()
-        .unwrap();
-
+fn generate_scales(mode_offset: usize) -> Array2::<String> {
     let mut rng = thread_rng();
     let mut root_indices: Vec<usize> = (0..NOTE_NAMES.len()).collect();
     root_indices.shuffle(&mut rng);
