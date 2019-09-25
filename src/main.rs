@@ -1,9 +1,3 @@
-// TODO implement grading and spaced repetition
-// TODO chord progression practice
-// TODO sight reading practice
-// TODO riff practice
-// TODO chord-to-chord practice
-
 #[macro_use]
 extern crate lazy_static;
 extern crate midir;

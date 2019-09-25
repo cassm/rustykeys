@@ -1,0 +1,5 @@
+(A) implement grading and spaced repetition
+(B) chord-to-chord practice
+(C) chord progression practice
+(C) sight reading practice
+(C) riff practice
