@@ -1,6 +1,4 @@
 use std::error::Error;
-use std::time;
-use std::thread;
 use rand::{thread_rng, seq::SliceRandom};
 use dialoguer::{theme::ColorfulTheme, Select, Confirmation};
 use termion::color;
@@ -113,7 +111,6 @@ fn practice_chords(chord_type: ChordType, inversion: usize, hand: Hand) -> Resul
                                     if chords[0].0 == i && octave_match {
                                         println!("{}Correct!{}", color::Fg(color::Green), color::Fg(color::Reset));
                                         chords.remove(0);
-                                        thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
 
                                         if chords.len() > 0 {
                                             println!("Play {}, {}", chords[0].0, chords[0].1);
@@ -121,12 +118,10 @@ fn practice_chords(chord_type: ChordType, inversion: usize, hand: Hand) -> Resul
                                     }
                                     else {
                                         println!("{}Try again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
-                                        thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
                                     }
                                 },
                                 None => {
                                     println!("{}unrecognised chord\nTry again: {}, {}{}", color::Fg(color::Red), chords[0].0, chords[0].1, color::Fg(color::Reset));
-                                    thread::sleep(time::Duration::from_millis(DEBOUNCE_MILLIS));
                                 }
                             }
                         }
