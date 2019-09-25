@@ -3,7 +3,6 @@
 // TODO sight reading practice
 // TODO riff practice
 // TODO chord-to-chord practice
-// TODO split into separate files oh my god
 
 #[macro_use]
 extern crate lazy_static;
@@ -27,21 +26,14 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use chords::practice_chords_launcher;
 use scales::practice_scales_launcher;
 
-fn main() {
-    match run() {
-        Ok(_) => (),
-        Err(err) => println!("Error: {}", err.description())
-    }
-}
-
-fn run() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let options = &[
         "Practice chords",
         "Practice scales",
     ];
 
     match Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Pick a root note")
+        .with_prompt("What would you like to do?")
         .items(options)
         .interact()
         .unwrap()
