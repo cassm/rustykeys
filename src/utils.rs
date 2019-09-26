@@ -2,7 +2,7 @@ pub mod music {
     use super::constants::NOTE_NAMES;
 
     pub fn get_octave(key_index: u8) -> Option<u8> {
-        let midi_start_index = 21;
+        let midi_start_index = 24;
 
         let note_index = key_index - midi_start_index;
 
@@ -40,9 +40,6 @@ pub mod constants {
     pub const DEBOUNCE_MILLIS: u64 = 100;
 
     pub const NOTE_NAMES: &'static [&'static [&'static str]] = &[
-        &["A"],
-        &["A#", "Bb"],
-        &["B"],
         &["C"],
         &["C#", "Db"],
         &["D"],
@@ -51,7 +48,10 @@ pub mod constants {
         &["F"],
         &["F#", "Gb"],
         &["G"],
-        &["G#", "Ab"]];
+        &["G#", "Ab"],
+        &["A"],
+        &["A#", "Bb"],
+        &["B"]];
 
     pub const MAJOR_SCALE_INTERVALS: &'static [usize] = &[2, 2, 1, 2, 2, 2, 1];
 }
