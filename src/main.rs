@@ -13,6 +13,7 @@ mod utils;
 mod midi;
 mod chords;
 mod scales;
+mod synth;
 
 use std::error::Error;
 use dialoguer::{theme::ColorfulTheme, Select};
