@@ -48,13 +48,12 @@ pub mod constants {
         &["A"],
         &["A#", "Bb"],
         &["B"]];
-
-    pub const MAJOR_SCALE_INTERVALS: &'static [usize] = &[2, 2, 1, 2, 2, 2, 1];
 }
 
 pub mod types {
     use std::fmt;
     use ordinal::Ordinal;
+    use num_derive::FromPrimitive;
 
     #[derive(Copy, Clone, PartialEq, Eq)]
     pub enum Hand {
@@ -79,6 +78,33 @@ pub mod types {
                 Hand::Left => write!(f, "Left Hand"),
                 Hand::Right => write!(f, "Right Hand"),
                 Hand::Both => write!(f, "Both Hands"),
+            }
+        }
+    }
+
+    #[derive(Copy, Clone, PartialEq, Eq, FromPrimitive)]
+    pub enum Mode {
+        BLUES = 0,
+        MAJOR,
+        MINOR,
+    }
+
+    impl Mode {
+        pub fn value(&self) -> Vec<usize> {
+           match *self {
+               Mode::BLUES => vec![3, 2, 1, 1, 3, 2],
+               Mode::MAJOR => vec![2, 2, 1, 2, 2, 2, 1],
+               Mode::MINOR => vec![2, 1, 2, 2, 1, 2, 2],
+           }
+        }
+    }
+
+    impl fmt::Display for Mode {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match &self {
+                Mode::BLUES => write!(f, "Blues"),
+                Mode::MAJOR => write!(f, "Major"),
+                Mode::MINOR => write!(f, "Minor"),
             }
         }
     }
