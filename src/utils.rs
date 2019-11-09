@@ -1,26 +1,20 @@
 pub mod music {
-    use super::constants::NOTE_NAMES;
+    use super::constants::{NOTE_NAMES, MIDI_START_INDEX};
 
     pub fn get_octave(key_index: u8) -> Option<u8> {
-        let midi_start_index = 24;
-
-        let note_index = key_index - midi_start_index;
+        let note_index = key_index - MIDI_START_INDEX;
 
         Some(note_index / NOTE_NAMES.len() as u8)
     }
 
     pub fn get_note_name(key_index: u8) -> String {
-        let midi_start_index = 21;
-
-        let note_index = key_index - midi_start_index;
+        let note_index = key_index - MIDI_START_INDEX;
 
         NOTE_NAMES[note_index as usize % NOTE_NAMES.len()][0].to_string()
     }
 
     pub fn note_matches(key_index: u8, note: &str) -> bool {
-        let midi_start_index = 21;
-
-        let note_index = key_index - midi_start_index;
+        let note_index = key_index - MIDI_START_INDEX;
 
         return NOTE_NAMES[note_index as usize % NOTE_NAMES.len()].contains(&note);
     }
@@ -38,6 +32,8 @@ pub mod mutex {
 
 pub mod constants {
     pub const DEBOUNCE_MILLIS: u64 = 100;
+    pub const MIDI_START_INDEX: u8 = 24;
+
 
     pub const NOTE_NAMES: &'static [&'static [&'static str]] = &[
         &["C"],
